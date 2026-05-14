@@ -8,6 +8,11 @@ app.use(express.json());
 
 const MAKE_WEBHOOK = "https://hook.us2.make.com/wk8r5h4qni7dgvoh7soh9f5j5m9od1ul";
 
+
+// ===============================
+// CONSULTA FINANCEIRA DIRETA
+// ===============================
+
 app.post("/financeiro", async (req, res) => {
 
   try {
@@ -53,7 +58,9 @@ app.post("/financeiro", async (req, res) => {
 });
 
 
+// ===============================
 // HOME ASSISTANT FAKE
+// ===============================
 
 app.get("/", (req, res) => {
   res.json({
@@ -67,25 +74,51 @@ app.get("/api/", (req, res) => {
   });
 });
 
+
+// ===============================
+// DISPOSITIVOS FALSOS
+// ===============================
+
 app.get("/api/states", (req, res) => {
-  res.json([]);
+
+  res.json([
+    {
+      entity_id: "light.faturamento_marco",
+      state: "off",
+      attributes: {
+        friendly_name: "faturamento março"
+      }
+    },
+    {
+      entity_id: "light.resumo_financeiro",
+      state: "off",
+      attributes: {
+        friendly_name: "resumo financeiro"
+      }
+    },
+    {
+      entity_id: "light.faturamento_atual",
+      state: "off",
+      attributes: {
+        friendly_name: "faturamento atual"
+      }
+    }
+  ]);
+
 });
 
-app.get("/api/config", (req, res) => {
-  res.json({
-    location_name: "Papieri",
-    version: "2026.1",
-    unit_system: {
-      temperature: "°C"
-    }
-  });
-});
+
+// ===============================
+// INTERCEPTA COMANDOS DA ASNO
+// ===============================
 
 app.post("/api/services/:domain/:service", async (req, res) => {
 
   try {
 
     const pergunta = req.body.entity_id || "consulta financeira";
+
+    console.log("Pergunta recebida:", pergunta);
 
     const resposta = await fetch(MAKE_WEBHOOK, {
       method: "POST",
@@ -97,14 +130,23 @@ app.post("/api/services/:domain/:service", async (req, res) => {
       })
     });
 
-    const data = await resposta.json();
+    const texto = await resposta.text();
 
-    console.log("Pergunta:", pergunta);
-    console.log("Resposta:", data);
+    let data;
+
+    try {
+      data = JSON.parse(texto);
+    } catch {
+      data = {
+        resposta: texto
+      };
+    }
+
+    console.log("Resposta IA:", data);
 
     res.json({
       success: true,
-      resposta: data
+      data
     });
 
   } catch (error) {
@@ -117,6 +159,28 @@ app.post("/api/services/:domain/:service", async (req, res) => {
   }
 
 });
+
+
+// ===============================
+// CONFIG FAKE HOME ASSISTANT
+// ===============================
+
+app.get("/api/config", (req, res) => {
+
+  res.json({
+    location_name: "Papieri",
+    version: "2026.1",
+    unit_system: {
+      temperature: "°C"
+    }
+  });
+
+});
+
+
+// ===============================
+// START SERVER
+// ===============================
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor online");
