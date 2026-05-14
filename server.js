@@ -81,6 +81,42 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+app.post("/api/services/:domain/:service", async (req, res) => {
+
+  try {
+
+    const pergunta = req.body.entity_id || "consulta financeira";
+
+    const resposta = await fetch(MAKE_WEBHOOK, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        pergunta
+      })
+    });
+
+    const data = await resposta.json();
+
+    console.log("Pergunta:", pergunta);
+    console.log("Resposta:", data);
+
+    res.json({
+      success: true,
+      resposta: data
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      erro: true,
+      mensagem: error.message
+    });
+
+  }
+
+});
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor online");
