@@ -26,41 +26,53 @@ async function consultarMake(pergunta) {
 
   const texto = await resposta.text();
 
+  function limparResposta(valor) {
+    if (!valor) return "";
+
+    if (typeof valor !== "string") {
+      return JSON.stringify(valor);
+    }
+
+    let atual = valor.trim();
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        const parsed = JSON.parse(atual);
+
+        if (parsed && parsed.resposta) {
+          atual = parsed.resposta;
+          continue;
+        }
+
+        if (parsed && parsed.status && !parsed.resposta) {
+          return JSON.stringify(parsed);
+        }
+
+        if (typeof parsed === "string") {
+          atual = parsed;
+          continue;
+        }
+
+        return JSON.stringify(parsed);
+      } catch {
+        break;
+      }
+    }
+
+    return atual;
+  }
+
   try {
     const data = JSON.parse(texto);
 
-    if (data.resposta && typeof data.resposta === "string") {
-      let respostaLimpa = data.resposta;
-
-      try {
-        const interno = JSON.parse(data.resposta);
-        if (interno.resposta) {
-          respostaLimpa = interno.resposta;
-        }
-      } catch {
-        const match = data.resposta.match(/"resposta"\s*:\s*([\s\S]*?)\n?}/);
-
-        if (match && match[1]) {
-          respostaLimpa = match[1]
-            .replace(/^["\s]+/, "")
-            .replace(/["\s]+$/, "")
-            .replace(/\\r/g, "")
-            .replace(/\\n/g, "\n")
-            .trim();
-        }
-      }
-
-      return {
-        status: "ok",
-        resposta: respostaLimpa
-      };
-    }
-
-    return data;
+    return {
+      status: "ok",
+      resposta: limparResposta(data.resposta || data)
+    };
   } catch {
     return {
       status: "ok",
-      resposta: texto
+      resposta: limparResposta(texto)
     };
   }
 }
