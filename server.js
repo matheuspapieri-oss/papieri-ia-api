@@ -27,7 +27,24 @@ async function consultarMake(pergunta) {
   const texto = await resposta.text();
 
   try {
-    return JSON.parse(texto);
+    const data = JSON.parse(texto);
+
+    if (typeof data.resposta === "string") {
+      try {
+        const respostaInterna = JSON.parse(data.resposta);
+        return {
+          status: "ok",
+          resposta: respostaInterna.resposta || data.resposta
+        };
+      } catch {
+        return {
+          status: "ok",
+          resposta: data.resposta
+        };
+      }
+    }
+
+    return data;
   } catch {
     return {
       status: "ok",
