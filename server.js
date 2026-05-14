@@ -69,23 +69,20 @@ app.get("/api/", (req, res) => {
   });
 });
 
-app.get("/api/config", (req, res) => {
+app.get("/api/states/:entity_id", (req, res) => {
+
   res.json({
-    latitude: -23.5505,
-    longitude: -46.6333,
-    elevation: 760,
-    unit_system: {
-      length: "km",
-      mass: "kg",
-      temperature: "°C",
-      volume: "L"
+    entity_id: "sensor.jarvis_financeiro",
+    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
+    attributes: {
+      friendly_name: "Jarvis Financeiro",
+      ultima_pergunta: ultimaPergunta,
+      icon: "mdi:finance"
     },
-    location_name: "Papieri IA",
-    time_zone: "America/Sao_Paulo",
-    components: ["sensor"],
-    config_dir: "/config",
-    version: "2026.5.0"
+    last_changed: new Date().toISOString(),
+    last_updated: new Date().toISOString()
   });
+
 });
 
 app.get("/api/states", (req, res) => {
