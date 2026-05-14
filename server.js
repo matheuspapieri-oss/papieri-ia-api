@@ -22,9 +22,17 @@ app.post("/financeiro", async (req, res) => {
       })
     });
 
-    const data = await resposta.json();
+const texto = await resposta.text();
 
-    res.json(data);
+try {
+  const data = JSON.parse(texto);
+  res.json(data);
+} catch {
+  res.json({
+    status: "accepted",
+    resposta: texto
+  });
+}
 
   } catch (error) {
 
