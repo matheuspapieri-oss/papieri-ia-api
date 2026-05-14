@@ -52,48 +52,8 @@ app.post("/financeiro", async (req, res) => {
 
 });
 
-app.get("/", (req, res) => {
-  res.send("IA Papieri Online");
-});
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor online");
-});
-
-const express = require("express");
-const axios = require("axios");
-
-const app = express();
-
-app.use(express.json());
-
-app.post("/financeiro", async (req, res) => {
-
-  try {
-
-    const resposta = await axios.post(
-      "SEU_WEBHOOK_MAKE",
-      req.body
-    );
-
-    res.json({
-      status: "ok",
-      resposta: resposta.data
-    });
-
-  } catch (erro) {
-
-    res.status(500).json({
-      erro: true,
-      mensagem: erro.message
-    });
-
-  }
-
-});
-
-
-// ADICIONE AQUI EMBAIXO
+// HOME ASSISTANT FAKE
 
 app.get("/", (req, res) => {
   res.json({
@@ -122,6 +82,6 @@ app.get("/api/config", (req, res) => {
 });
 
 
-app.listen(8080, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor online");
 });
