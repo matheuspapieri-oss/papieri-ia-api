@@ -9,9 +9,9 @@ app.use(express.json());
 const MAKE_WEBHOOK = "https://hook.us2.make.com/wk8r5h4qni7dgvoh7soh9f5j5m9od1ul";
 
 
-// ===============================
-// CONSULTA FINANCEIRA DIRETA
-// ===============================
+// =====================================
+// CONSULTA FINANCEIRA
+// =====================================
 
 app.post("/financeiro", async (req, res) => {
 
@@ -58,59 +58,67 @@ app.post("/financeiro", async (req, res) => {
 });
 
 
-// ===============================
+// =====================================
 // HOME ASSISTANT FAKE
-// ===============================
+// =====================================
 
 app.get("/", (req, res) => {
+
   res.json({
     message: "Home Assistant Fake Online"
   });
+
 });
 
 app.get("/api/", (req, res) => {
+
   res.json({
     message: "API OK"
   });
+
 });
 
 
-// ===============================
-// DISPOSITIVOS FALSOS
-// ===============================
+// =====================================
+// SENSORES FINANCEIROS
+// =====================================
 
 app.get("/api/states", (req, res) => {
 
   res.json([
+
     {
-      entity_id: "light.faturamento_marco",
-      state: "off",
+      entity_id: "sensor.faturamento_marco",
+      state: "R$ 104.044",
       attributes: {
         friendly_name: "faturamento março"
       }
     },
+
     {
-      entity_id: "light.resumo_financeiro",
-      state: "off",
+      entity_id: "sensor.resumo_financeiro",
+      state: "133 pedidos",
       attributes: {
         friendly_name: "resumo financeiro"
       }
     },
+
     {
-      entity_id: "light.faturamento_atual",
-      state: "off",
+      entity_id: "sensor.faturamento_atual",
+      state: "R$ 84.381",
       attributes: {
         friendly_name: "faturamento atual"
       }
     }
+
   ]);
 
 });
 
 
-// ===============================
+// =====================================
 // INTERCEPTA COMANDOS DA ASNO
-// ===============================
+// =====================================
 
 app.post("/api/services/:domain/:service", async (req, res) => {
 
@@ -161,9 +169,9 @@ app.post("/api/services/:domain/:service", async (req, res) => {
 });
 
 
-// ===============================
+// =====================================
 // CONFIG FAKE HOME ASSISTANT
-// ===============================
+// =====================================
 
 app.get("/api/config", (req, res) => {
 
@@ -178,9 +186,9 @@ app.get("/api/config", (req, res) => {
 });
 
 
-// ===============================
+// =====================================
 // START SERVER
-// ===============================
+// =====================================
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor online");
