@@ -29,19 +29,31 @@ async function consultarMake(pergunta) {
   try {
     const data = JSON.parse(texto);
 
-    if (typeof data.resposta === "string") {
+    if (data.resposta && typeof data.resposta === "string") {
+      let respostaLimpa = data.resposta;
+
       try {
-        const respostaInterna = JSON.parse(data.resposta);
-        return {
-          status: "ok",
-          resposta: respostaInterna.resposta || data.resposta
-        };
+        const interno = JSON.parse(data.resposta);
+        if (interno.resposta) {
+          respostaLimpa = interno.resposta;
+        }
       } catch {
-        return {
-          status: "ok",
-          resposta: data.resposta
-        };
+        const match = data.resposta.match(/"resposta"\s*:\s*([\s\S]*?)\n?}/);
+
+        if (match && match[1]) {
+          respostaLimpa = match[1]
+            .replace(/^["\s]+/, "")
+            .replace(/["\s]+$/, "")
+            .replace(/\\r/g, "")
+            .replace(/\\n/g, "\n")
+            .trim();
+        }
       }
+
+      return {
+        status: "ok",
+        resposta: respostaLimpa
+      };
     }
 
     return data;
