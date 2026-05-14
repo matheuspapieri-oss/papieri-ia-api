@@ -8,8 +8,12 @@ app.use(express.json());
 
 const MAKE_WEBHOOK = "https://hook.us2.make.com/wk8r5h4qni7dgvoh7soh9f5j5m9od1ul";
 
-let ultimoFaturamentoMarco = "carregando";
-let ultimaRespostaFinanceira = "Nenhuma consulta ainda";
+let ultimaPergunta = "Nenhuma pergunta ainda";
+let ultimaRespostaFinanceira = "Nenhuma consulta financeira ainda";
+let ultimoFaturamento = "104044.26";
+let ultimoPeriodo = "29/04/2026 a 05/05/2026";
+let ultimoPedidos = "133";
+let ultimaEmpresaDestaque = "Papieri 03";
 
 async function consultarMake(pergunta) {
   const resposta = await fetch(MAKE_WEBHOOK, {
@@ -26,181 +30,194 @@ async function consultarMake(pergunta) {
     return JSON.parse(texto);
   } catch {
     return {
-      status: "erro",
+      status: "ok",
       resposta: texto
     };
   }
 }
 
-function extrairValorFaturamento(texto) {
-  if (!texto) return "sem dados";
-
-  const match = texto.match(/R\$\s?[\d\.\,]+/);
-
-  if (match) {
-    return match[0];
-  }
-
-  return "consultado";
-}
-
-
-// ===============================
-// CONSULTA FINANCEIRA DIRETA
-// ===============================
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    nome: "Papieri IA API",
+    descricao: "API financeira conectada ao Make e compatível com leitura estilo Home Assistant"
+  });
+});
 
 app.post("/financeiro", async (req, res) => {
   try {
-    const pergunta = req.body.pergunta || "qual faturamento de março?";
+    const pergunta = req.body.pergunta || "qual faturamento?";
 
     const data = await consultarMake(pergunta);
 
+    ultimaPergunta = pergunta;
     ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
 
-    if (pergunta.toLowerCase().includes("março") || pergunta.toLowerCase().includes("marco")) {
-      ultimoFaturamentoMarco = extrairValorFaturamento(ultimaRespostaFinanceira);
-    }
-
     res.json(data);
-
   } catch (error) {
     res.status(500).json({
-      erro: true,
-      mensagem: error.message
+      status: "erro",
+      mensagem: "Falha ao consultar HUB financeiro",
+      detalhe: error.message
     });
   }
-});
-
-
-// ===============================
-// HOME ASSISTANT FAKE
-// ===============================
-
-app.get("/", (req, res) => {
-  res.json({
-    message: "Home Assistant Fake Online"
-  });
 });
 
 app.get("/api/", (req, res) => {
   res.json({
-    message: "API OK"
+    message: "API running."
   });
 });
-
-
-// ===============================
-// SENSORES FINANCEIROS DINÂMICOS
-// ===============================
-
-app.get("/api/states", async (req, res) => {
-  try {
-    const data = await consultarMake("qual faturamento de março?");
-
-    ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
-    ultimoFaturamentoMarco = extrairValorFaturamento(ultimaRespostaFinanceira);
-
-    res.json([
-      {
-        entity_id: "sensor.faturamento_marco",
-        state: ultimoFaturamentoMarco,
-        attributes: {
-          friendly_name: "faturamento março",
-          resposta_completa: ultimaRespostaFinanceira
-        }
-      },
-      {
-        entity_id: "sensor.resumo_financeiro",
-        state: "disponível",
-        attributes: {
-          friendly_name: "resumo financeiro",
-          resposta_completa: ultimaRespostaFinanceira
-        }
-      },
-      {
-        entity_id: "sensor.faturamento_atual",
-        state: ultimoFaturamentoMarco,
-        attributes: {
-          friendly_name: "faturamento atual",
-          resposta_completa: ultimaRespostaFinanceira
-        }
-      }
-    ]);
-
-  } catch (error) {
-    res.json([
-      {
-        entity_id: "sensor.faturamento_marco",
-        state: "erro",
-        attributes: {
-          friendly_name: "faturamento março",
-          erro: error.message
-        }
-      }
-    ]);
-  }
-});
-
-
-// ===============================
-// INTERCEPTA COMANDOS DA ASNO
-// ===============================
-
-app.post("/api/services/:domain/:service", async (req, res) => {
-  try {
-    const entity = req.body.entity_id || "";
-    let pergunta = "qual faturamento de março?";
-
-    if (entity.includes("resumo_financeiro")) {
-      pergunta = "qual resumo financeiro?";
-    }
-
-    if (entity.includes("faturamento_atual")) {
-      pergunta = "qual faturamento atual?";
-    }
-
-    if (entity.includes("faturamento_marco")) {
-      pergunta = "qual faturamento de março?";
-    }
-
-    const data = await consultarMake(pergunta);
-
-    ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
-    ultimoFaturamentoMarco = extrairValorFaturamento(ultimaRespostaFinanceira);
-
-    res.json({
-      success: true,
-      data
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      erro: true,
-      mensagem: error.message
-    });
-  }
-});
-
-
-// ===============================
-// CONFIG FAKE HOME ASSISTANT
-// ===============================
 
 app.get("/api/config", (req, res) => {
   res.json({
-    location_name: "Papieri",
-    version: "2026.1",
+    latitude: -23.5505,
+    longitude: -46.6333,
+    elevation: 760,
     unit_system: {
-      temperature: "°C"
-    }
+      length: "km",
+      mass: "kg",
+      temperature: "°C",
+      volume: "L"
+    },
+    location_name: "Papieri IA",
+    time_zone: "America/Sao_Paulo",
+    components: ["sensor"],
+    config_dir: "/config",
+    version: "2026.5.0"
   });
 });
 
+app.get("/api/states", (req, res) => {
+  res.json([
+    {
+      entity_id: "sensor.faturamento_papieri",
+      state: ultimoFaturamento,
+      attributes: {
+        friendly_name: "Faturamento Papieri",
+        unit_of_measurement: "R$",
+        icon: "mdi:cash"
+      },
+      last_changed: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    },
+    {
+      entity_id: "sensor.periodo_financeiro",
+      state: ultimoPeriodo,
+      attributes: {
+        friendly_name: "Período Financeiro",
+        icon: "mdi:calendar"
+      },
+      last_changed: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    },
+    {
+      entity_id: "sensor.pedidos_papieri",
+      state: ultimoPedidos,
+      attributes: {
+        friendly_name: "Pedidos Papieri",
+        icon: "mdi:package-variant"
+      },
+      last_changed: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    },
+    {
+      entity_id: "sensor.empresa_destaque_papieri",
+      state: ultimaEmpresaDestaque,
+      attributes: {
+        friendly_name: "Empresa Destaque Papieri",
+        icon: "mdi:trophy"
+      },
+      last_changed: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    },
+    {
+      entity_id: "sensor.resumo_financeiro_papieri",
+      state: ultimaRespostaFinanceira,
+      attributes: {
+        friendly_name: "Resumo Financeiro Papieri",
+        ultima_pergunta: ultimaPergunta,
+        icon: "mdi:chart-line"
+      },
+      last_changed: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    }
+  ]);
+});
 
-// ===============================
-// START SERVER
-// ===============================
+app.get("/api/states/:entity_id", (req, res) => {
+  const entityId = req.params.entity_id;
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor online");
+  const states = [
+    {
+      entity_id: "sensor.faturamento_papieri",
+      state: ultimoFaturamento,
+      attributes: {
+        friendly_name: "Faturamento Papieri",
+        unit_of_measurement: "R$",
+        icon: "mdi:cash"
+      }
+    },
+    {
+      entity_id: "sensor.resumo_financeiro_papieri",
+      state: ultimaRespostaFinanceira,
+      attributes: {
+        friendly_name: "Resumo Financeiro Papieri",
+        ultima_pergunta: ultimaPergunta,
+        icon: "mdi:chart-line"
+      }
+    }
+  ];
+
+  const found = states.find((item) => item.entity_id === entityId);
+
+  if (!found) {
+    return res.status(404).json({
+      message: "Entity not found."
+    });
+  }
+
+  res.json({
+    ...found,
+    last_changed: new Date().toISOString(),
+    last_updated: new Date().toISOString()
+  });
+});
+
+app.post("/api/services/:domain/:service", async (req, res) => {
+  try {
+    const pergunta =
+      req.body.pergunta ||
+      req.body.message ||
+      req.body.text ||
+      "qual faturamento?";
+
+    const data = await consultarMake(pergunta);
+
+    ultimaPergunta = pergunta;
+    ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
+
+    res.json([
+      {
+        entity_id: "sensor.resumo_financeiro_papieri",
+        state: ultimaRespostaFinanceira,
+        attributes: {
+          friendly_name: "Resumo Financeiro Papieri",
+          ultima_pergunta: ultimaPergunta
+        }
+      }
+    ]);
+  } catch (error) {
+    res.status(500).json({
+      status: "erro",
+      mensagem: "Falha ao executar serviço financeiro",
+      detalhe: error.message
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Papieri IA API online na porta ${PORT}`);
 });
