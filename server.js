@@ -10,10 +10,44 @@ const MAKE_WEBHOOK = "https://hook.us2.make.com/wk8r5h4qni7dgvoh7soh9f5j5m9od1ul
 
 let ultimaPergunta = "Nenhuma pergunta ainda";
 let ultimaRespostaFinanceira = "Nenhuma consulta financeira ainda";
-let ultimoFaturamento = "104044.26";
-let ultimoPeriodo = "29/04/2026 a 05/05/2026";
-let ultimoPedidos = "133";
-let ultimaEmpresaDestaque = "Papieri 03";
+
+function extrairResposta(valor) {
+  if (!valor) return "Nenhuma resposta encontrada.";
+
+  let atual = String(valor).trim();
+
+  for (let i = 0; i < 5; i++) {
+    try {
+      const parsed = JSON.parse(atual);
+
+      if (parsed && typeof parsed === "object" && parsed.resposta) {
+        atual = String(parsed.resposta).trim();
+        continue;
+      }
+
+      if (typeof parsed === "string") {
+        atual = parsed.trim();
+        continue;
+      }
+
+      return JSON.stringify(parsed);
+    } catch {
+      break;
+    }
+  }
+
+  const match = atual.match(/"resposta"\s*:\s*"([\s\S]*?)"\s*\r?\n?\}/);
+
+  if (match && match[1]) {
+    return match[1]
+      .replace(/\\"/g, "\"")
+      .replace(/\\r/g, "")
+      .replace(/\\n/g, "\n")
+      .trim();
+  }
+
+  return atual;
+}
 
 async function consultarMake(pergunta) {
   const resposta = await fetch(MAKE_WEBHOOK, {
@@ -26,53 +60,17 @@ async function consultarMake(pergunta) {
 
   const texto = await resposta.text();
 
-  function limparResposta(valor) {
-    if (!valor) return "";
-
-    if (typeof valor !== "string") {
-      return JSON.stringify(valor);
-    }
-
-    let atual = valor.trim();
-
-    for (let i = 0; i < 3; i++) {
-      try {
-        const parsed = JSON.parse(atual);
-
-        if (parsed && parsed.resposta) {
-          atual = parsed.resposta;
-          continue;
-        }
-
-        if (parsed && parsed.status && !parsed.resposta) {
-          return JSON.stringify(parsed);
-        }
-
-        if (typeof parsed === "string") {
-          atual = parsed;
-          continue;
-        }
-
-        return JSON.stringify(parsed);
-      } catch {
-        break;
-      }
-    }
-
-    return atual;
-  }
-
   try {
     const data = JSON.parse(texto);
 
     return {
       status: "ok",
-      resposta: limparResposta(data.resposta || data)
+      resposta: extrairResposta(data.resposta || texto)
     };
   } catch {
     return {
       status: "ok",
-      resposta: limparResposta(texto)
+      resposta: extrairResposta(texto)
     };
   }
 }
@@ -92,7 +90,7 @@ app.post("/financeiro", async (req, res) => {
     const data = await consultarMake(pergunta);
 
     ultimaPergunta = pergunta;
-    ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
+    ultimaRespostaFinanceira = data.resposta;
 
     res.json(data);
   } catch (error) {
@@ -110,72 +108,34 @@ app.get("/api/", (req, res) => {
   });
 });
 
-app.get("/api/states/:entity_id", (req, res) => {
-
+app.get("/api/config", (req, res) => {
   res.json({
-    entity_id: "sensor.jarvis_financeiro",
-    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
-    attributes: {
-      friendly_name: "Jarvis Financeiro",
-      ultima_pergunta: ultimaPergunta,
-      icon: "mdi:finance"
+    latitude: -23.5505,
+    longitude: -46.6333,
+    elevation: 760,
+    unit_system: {
+      length: "km",
+      mass: "kg",
+      temperature: "°C",
+      volume: "L"
     },
-    last_changed: new Date().toISOString(),
-    last_updated: new Date().toISOString()
+    location_name: "Papieri IA",
+    time_zone: "America/Sao_Paulo",
+    components: ["sensor"],
+    config_dir: "/config",
+    version: "2026.5.0"
   });
-
 });
 
 app.get("/api/states", (req, res) => {
   res.json([
     {
-      entity_id: "sensor.faturamento_papieri",
-      state: ultimoFaturamento,
+      entity_id: "sensor.jarvis_financeiro",
+      state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
       attributes: {
-        friendly_name: "Faturamento Papieri",
-        unit_of_measurement: "R$",
-        icon: "mdi:cash"
-      },
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    },
-    {
-      entity_id: "sensor.periodo_financeiro",
-      state: ultimoPeriodo,
-      attributes: {
-        friendly_name: "Período Financeiro",
-        icon: "mdi:calendar"
-      },
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    },
-    {
-      entity_id: "sensor.pedidos_papieri",
-      state: ultimoPedidos,
-      attributes: {
-        friendly_name: "Pedidos Papieri",
-        icon: "mdi:package-variant"
-      },
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    },
-    {
-      entity_id: "sensor.empresa_destaque_papieri",
-      state: ultimaEmpresaDestaque,
-      attributes: {
-        friendly_name: "Empresa Destaque Papieri",
-        icon: "mdi:trophy"
-      },
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    },
-    {
-      entity_id: "sensor.resumo_financeiro_papieri",
-      state: ultimaRespostaFinanceira,
-      attributes: {
-        friendly_name: "Resumo Financeiro Papieri",
+        friendly_name: "Jarvis Financeiro",
         ultima_pergunta: ultimaPergunta,
-        icon: "mdi:chart-line"
+        icon: "mdi:finance"
       },
       last_changed: new Date().toISOString(),
       last_updated: new Date().toISOString()
@@ -184,39 +144,14 @@ app.get("/api/states", (req, res) => {
 });
 
 app.get("/api/states/:entity_id", (req, res) => {
-  const entityId = req.params.entity_id;
-
-  const states = [
-    {
-      entity_id: "sensor.faturamento_papieri",
-      state: ultimoFaturamento,
-      attributes: {
-        friendly_name: "Faturamento Papieri",
-        unit_of_measurement: "R$",
-        icon: "mdi:cash"
-      }
-    },
-    {
-      entity_id: "sensor.resumo_financeiro_papieri",
-      state: ultimaRespostaFinanceira,
-      attributes: {
-        friendly_name: "Resumo Financeiro Papieri",
-        ultima_pergunta: ultimaPergunta,
-        icon: "mdi:chart-line"
-      }
-    }
-  ];
-
-  const found = states.find((item) => item.entity_id === entityId);
-
-  if (!found) {
-    return res.status(404).json({
-      message: "Entity not found."
-    });
-  }
-
   res.json({
-    ...found,
+    entity_id: "sensor.jarvis_financeiro",
+    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
+    attributes: {
+      friendly_name: "Jarvis Financeiro",
+      ultima_pergunta: ultimaPergunta,
+      icon: "mdi:finance"
+    },
     last_changed: new Date().toISOString(),
     last_updated: new Date().toISOString()
   });
@@ -233,16 +168,19 @@ app.post("/api/services/:domain/:service", async (req, res) => {
     const data = await consultarMake(pergunta);
 
     ultimaPergunta = pergunta;
-    ultimaRespostaFinanceira = data.resposta || JSON.stringify(data);
+    ultimaRespostaFinanceira = data.resposta;
 
     res.json([
       {
-        entity_id: "sensor.resumo_financeiro_papieri",
+        entity_id: "sensor.jarvis_financeiro",
         state: ultimaRespostaFinanceira,
         attributes: {
-          friendly_name: "Resumo Financeiro Papieri",
-          ultima_pergunta: ultimaPergunta
-        }
+          friendly_name: "Jarvis Financeiro",
+          ultima_pergunta: ultimaPergunta,
+          icon: "mdi:finance"
+        },
+        last_changed: new Date().toISOString(),
+        last_updated: new Date().toISOString()
       }
     ]);
   } catch (error) {
