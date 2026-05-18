@@ -10,6 +10,7 @@ const MAKE_WEBHOOK = "https://hook.us2.make.com/wk8r5h4qni7dgvoh7soh9f5j5m9od1ul
 
 let ultimaPergunta = "Nenhuma pergunta ainda";
 let ultimaRespostaFinanceira = "Nenhuma consulta financeira ainda";
+let ultimaAtualizacao = new Date().toISOString();
 
 function extrairResposta(valor) {
   if (!valor) return "Nenhuma resposta encontrada.";
@@ -49,6 +50,21 @@ function extrairResposta(valor) {
   return atual;
 }
 
+function montarSensorFinanceiro() {
+  return {
+    entity_id: "sensor.jarvis_financeiro",
+    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
+    attributes: {
+      friendly_name: "Jarvis Financeiro",
+      ultima_pergunta: ultimaPergunta,
+      resposta_completa: ultimaRespostaFinanceira,
+      icon: "mdi:finance"
+    },
+    last_changed: ultimaAtualizacao,
+    last_updated: ultimaAtualizacao
+  };
+}
+
 async function consultarMake(pergunta) {
   const resposta = await fetch(MAKE_WEBHOOK, {
     method: "POST",
@@ -75,22 +91,41 @@ async function consultarMake(pergunta) {
   }
 }
 
+async function executarConsultaFinanceira(pergunta) {
+  const perguntaFinal = pergunta || "qual faturamento?";
+
+  const data = await consultarMake(perguntaFinal);
+
+  ultimaPergunta = perguntaFinal;
+  ultimaRespostaFinanceira = data.resposta;
+  ultimaAtualizacao = new Date().toISOString();
+
+  return data;
+}
+
 app.get("/", (req, res) => {
   res.json({
     status: "online",
     nome: "Papieri IA API",
-    descricao: "API financeira conectada ao Make e compatível com leitura estilo Home Assistant"
+    descricao: "API financeira conectada ao Make e compatível com leitura estilo Home Assistant",
+    endpoints: {
+      financeiro: "POST /financeiro",
+      states: "GET /api/states",
+      service: "POST /api/services/jarvis/financeiro"
+    }
   });
 });
 
 app.post("/financeiro", async (req, res) => {
   try {
-    const pergunta = req.body.pergunta || "qual faturamento?";
+    const pergunta =
+      req.body.pergunta ||
+      req.body.message ||
+      req.body.text ||
+      req.body.command ||
+      "qual faturamento?";
 
-    const data = await consultarMake(pergunta);
-
-    ultimaPergunta = pergunta;
-    ultimaRespostaFinanceira = data.resposta;
+    const data = await executarConsultaFinanceira(pergunta);
 
     res.json(data);
   } catch (error) {
@@ -129,59 +164,63 @@ app.get("/api/config", (req, res) => {
 
 app.get("/api/states", (req, res) => {
   res.json([
-    {
-      entity_id: "sensor.jarvis_financeiro",
-      state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
-      attributes: {
-        friendly_name: "Jarvis Financeiro",
-        ultima_pergunta: ultimaPergunta,
-        icon: "mdi:finance"
-      },
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    }
+    montarSensorFinanceiro()
   ]);
 });
 
-app.get("/api/states/:entity_id", (req, res) => {
-  res.json({
-    entity_id: "sensor.jarvis_financeiro",
-    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
-    attributes: {
-      friendly_name: "Jarvis Financeiro",
-      ultima_pergunta: ultimaPergunta,
-      icon: "mdi:finance"
-    },
-    last_changed: new Date().toISOString(),
-    last_updated: new Date().toISOString()
-  });
+app.get("/api/states/sensor.jarvis_financeiro", (req, res) => {
+  res.json(montarSensorFinanceiro());
 });
 
-app.post("/api/services/:domain/:service", async (req, res) => {
+app.get("/api/states/:entity_id", (req, res) => {
+  res.json(montarSensorFinanceiro());
+});
+
+app.post("/api/services/jarvis/financeiro", async (req, res) => {
   try {
     const pergunta =
       req.body.pergunta ||
       req.body.message ||
       req.body.text ||
+      req.body.command ||
+      req.body.service_data?.pergunta ||
+      req.body.service_data?.message ||
+      req.body.service_data?.text ||
       "qual faturamento?";
 
-    const data = await consultarMake(pergunta);
-
-    ultimaPergunta = pergunta;
-    ultimaRespostaFinanceira = data.resposta;
+    await executarConsultaFinanceira(pergunta);
 
     res.json([
-      {
-        entity_id: "sensor.jarvis_financeiro",
-        state: ultimaRespostaFinanceira,
-        attributes: {
-          friendly_name: "Jarvis Financeiro",
-          ultima_pergunta: ultimaPergunta,
-          icon: "mdi:finance"
-        },
-        last_changed: new Date().toISOString(),
-        last_updated: new Date().toISOString()
-      }
+      montarSensorFinanceiro()
+    ]);
+  } catch (error) {
+    res.status(500).json({
+      status: "erro",
+      mensagem: "Falha ao executar serviço financeiro",
+      detalhe: error.message
+    });
+  }
+});
+
+app.post("/api/services/:domain/:service", async (req, res) => {
+  try {
+    const domain = req.params.domain;
+    const service = req.params.service;
+
+    const pergunta =
+      req.body.pergunta ||
+      req.body.message ||
+      req.body.text ||
+      req.body.command ||
+      req.body.service_data?.pergunta ||
+      req.body.service_data?.message ||
+      req.body.service_data?.text ||
+      `${domain}.${service}`;
+
+    await executarConsultaFinanceira(pergunta);
+
+    res.json([
+      montarSensorFinanceiro()
     ]);
   } catch (error) {
     res.status(500).json({
