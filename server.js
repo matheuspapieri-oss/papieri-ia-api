@@ -53,9 +53,9 @@ function extrairResposta(valor) {
 function montarSensorFinanceiro() {
   return {
     entity_id: "sensor.jarvis_financeiro",
-    state: ultimaRespostaFinanceira || "Nenhuma consulta realizada ainda",
+    state: "disponivel",
     attributes: {
-      friendly_name: "sensor.jarvis_financeiro",
+      friendly_name: "Jarvis Financeiro",
       ultima_pergunta: ultimaPergunta,
       resposta_completa: ultimaRespostaFinanceira,
       icon: "mdi:finance"
