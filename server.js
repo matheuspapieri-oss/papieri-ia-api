@@ -51,14 +51,21 @@ function extrairResposta(valor) {
 }
 
 function montarSensorFinanceiro() {
-  const respostaCurta = String(ultimaRespostaFinanceira || "Nenhuma consulta financeira ainda")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 240);
+
+  let resumo = "Nenhuma consulta financeira";
+
+  if (ultimaRespostaFinanceira) {
+    resumo = ultimaRespostaFinanceira
+      .replace(/\n/g, " ")
+      .replace(/[^\w\sR$.,:%()-]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+  }
 
   return {
     entity_id: "sensor.jarvis_financeiro",
-    state: respostaCurta,
+    state: resumo,
     attributes: {
       friendly_name: "Jarvis Financeiro",
       ultima_pergunta: ultimaPergunta,
