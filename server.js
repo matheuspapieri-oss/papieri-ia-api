@@ -51,9 +51,14 @@ function extrairResposta(valor) {
 }
 
 function montarSensorFinanceiro() {
+  const respostaCurta = String(ultimaRespostaFinanceira || "Nenhuma consulta financeira ainda")
+    .replace(/\n/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 240);
+
   return {
     entity_id: "sensor.jarvis_financeiro",
-    state: "disponivel",
+    state: respostaCurta,
     attributes: {
       friendly_name: "Jarvis Financeiro",
       ultima_pergunta: ultimaPergunta,
